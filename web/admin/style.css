@@ -1,0 +1,38 @@
+body {
+  font-family: "Palatino Linotype", Palatino, serif;
+  margin: 0;
+  background: #f4efe4;
+  color: #1b2430;
+}
+
+header,
+main {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 1rem 1.25rem;
+}
+
+form {
+  display: grid;
+  gap: 0.4rem;
+  margin-bottom: 1.5rem;
+}
+
+input,
+button {
+  font: inherit;
+  padding: 0.4rem 0.5rem;
+}
+
+.flash {
+  padding: 0.6rem 0.8rem;
+  background: #e7d7b8;
+}
+
+.flash.error {
+  background: #e8c0b0;
+}
+
+#schedule {
+  padding-left: 1.2rem;
+}

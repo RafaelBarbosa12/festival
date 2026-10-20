@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Admin — Deauville Festival du Rire</title>
+    <link rel="stylesheet" href="/admin/style.css" />
+  </head>
+  <body>
+    <header>
+      <p><a href="/">← Site</a></p>
+      <h1>Admin</h1>
+      <p id="flash" class="flash" hidden></p>
+    </header>
+    <main>
+      <section>
+        <h2>Add a solo show</h2>
+        <form id="solo-form">
+          <input name="title" placeholder="Title" required />
+          <input name="artist" placeholder="Artist slug" required />
+          <input name="venue" placeholder="Venue slug" required />
+          <input name="start" placeholder="2027-06-13T11:00" required />
+          <input name="duration_minutes" type="number" placeholder="Minutes" required />
+          <button type="submit">Schedule</button>
+        </form>
+      </section>
+      <section>
+        <h2>Add a lineup</h2>
+        <form id="lineup-form">
+          <input name="title" placeholder="Title" required />
+          <input name="host" placeholder="Host slug" required />
+          <input name="acts" placeholder="act-slug, other-slug" required />
+          <input name="venue" placeholder="Venue slug" required />
+          <input name="start" placeholder="2027-06-13T11:00" required />
+          <input name="duration_minutes" type="number" placeholder="Minutes" required />
+          <button type="submit">Schedule</button>
+        </form>
+      </section>
+      <section>
+        <h2>Move a show</h2>
+        <form id="move-form">
+          <input name="id" placeholder="Current id" required />
+          <input name="start" placeholder="New start 2027-06-13T12:00" required />
+          <button type="submit">Move</button>
+        </form>
+      </section>
+      <section>
+        <h2>Cancel a show</h2>
+        <form id="cancel-form">
+          <input name="id" placeholder="Performance id" required />
+          <button type="submit">Cancel</button>
+        </form>
+      </section>
+      <section>
+        <h2>Register a participant</h2>
+        <form id="register-form">
+          <input name="id" placeholder="Workshop id" required />
+          <input name="name" placeholder="Name" required />
+          <button type="submit">Register</button>
+        </form>
+      </section>
+      <section>
+        <h2>Add an artist</h2>
+        <form id="artist-form">
+          <input name="name" placeholder="Name" required />
+          <button type="submit">Add</button>
+        </form>
+      </section>
+      <section>
+        <h2>Schedule</h2>
+        <ul id="schedule"></ul>
+      </section>
+    </main>
+    <script src="/admin/admin.js"></script>
+  </body>
+</html>

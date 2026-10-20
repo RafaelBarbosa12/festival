@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Deauville Festival du Rire</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <header class="hero">
+      <p class="eyebrow">10–13 June 2027</p>
+      <h1 id="festival-name">Deauville Festival du Rire</h1>
+      <p id="festival-dates" class="lede"></p>
+    </header>
+
+    <nav class="toolbar">
+      <div id="day-tabs" class="tabs"></div>
+      <label class="venue-filter">
+        Venue
+        <select id="venue-select">
+          <option value="">All venues</option>
+        </select>
+      </label>
+    </nav>
+
+    <main>
+      <section id="now-block">
+        <h2>On stage now</h2>
+        <p id="now-when" class="empty"></p>
+        <div id="now-playing" class="cards"></div>
+        <h3>Up next</h3>
+        <div id="up-next" class="cards"></div>
+      </section>
+
+      <section>
+        <h2>Programme</h2>
+        <p id="programme-empty" class="empty hidden">No shows for this day.</p>
+        <div id="programme" class="cards"></div>
+      </section>
+
+      <section>
+        <h2>Artists</h2>
+        <div id="artists" class="artist-grid"></div>
+      </section>
+    </main>
+
+    <script src="/app.js"></script>
+  </body>
+</html>
