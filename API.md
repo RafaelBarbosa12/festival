@@ -1,59 +1,115 @@
-# API — Deauville Festival du Rire
+# API
 
-The website and the admin talk to the program only through these routes.
-Field names are a contract.
+JSON API under `/api`. The same server serves the website (`/`) and the
+admin (`/admin/`), which only use these routes. With FastAPI, the interactive
+documentation is at `/docs`.
+
+Dates and times are local festival time, without time zone:
+`2027-06-11` for a day, `2027-06-11T21:00` for a moment.
 
 ## Objects
 
-**Festival** `{name, first_day, last_day, days}`
+### Venue
 
-**Venue** `{slug, name, capacity, address}`
+```json
+{
+  "slug": "le-kiosque",
+  "name": "Le Kiosque",
+  "capacity": 120,
+  "address": "Beach promenade"
+}
+```
 
-**Artist** `{slug, name, bio, photo_url}` — on `GET /api/artists/{slug}`, also `performances`.
+### Artist
 
-**Performance** (common) `{id, kind, title, venue, venue_name, start, end, duration_minutes, festival_day, description, summary, capacity, artists}` where `artists` is `[{slug, name}, ...]`.
+```json
+{
+  "slug": "nora-lebrun",
+  "name": "Nora Lebrun",
+  "bio": "Deadpan stories.",
+  "photo_url": ""
+}
+```
 
-- solo also has `artist`, `min_age`
-- lineup also has `host`, `acts`
-- workshop also has `teacher`, `max_participants`, `participants`, `places_left`
+### Performance
 
-`start` / `end` use `YYYY-MM-DDTHH:MM`. `id` is `{venue}-{YYYY-MM-DD}-{HHMM}`.
+Common fields, for every kind:
+
+| Field              | Example                          | Note                                      |
+| ------------------ | -------------------------------- | ----------------------------------------- |
+| `id`               | `"le-kiosque-2027-06-12-0100"`   | venue slug + start                        |
+| `kind`             | `"solo"`                         | `"solo"`, `"lineup"` or `"workshop"`      |
+| `title`            | `"After Hours"`                  |                                           |
+| `venue`            | `"le-kiosque"`                   | venue slug                                |
+| `venue_name`       | `"Le Kiosque"`                   |                                           |
+| `start`, `end`     | `"2027-06-12T01:00"`             |                                           |
+| `duration_minutes` | `60`                             | 1 to 360                                  |
+| `festival_day`     | `"2027-06-11"`                   | a day ends at 06:00                       |
+| `description`      | `""`                             |                                           |
+| `summary`          | `"hosted by Tom Vasseur, with…"` | one line for the programme                |
+| `capacity`         | `120`                            | seats, or places for a workshop           |
+| `artists`          | `[{"slug": …, "name": …}]`       | everyone on stage, in order of appearance |
+
+Fields of each kind:
+
+| Kind       | Fields                                                                      |
+| ---------- | --------------------------------------------------------------------------- |
+| `solo`     | `artist` (slug), `min_age` (0 to 18)                                        |
+| `lineup`   | `host` (slug), `acts` (list of slugs, at least 2)                           |
+| `workshop` | `teacher` (slug), `max_participants`, `participants` (names), `places_left` |
 
 ## Read
 
-| Method | Path | Query | Success |
-| ------ | ---- | ----- | ------- |
-| GET | `/api/festival` | | 200 festival |
-| GET | `/api/venues` | | 200 list, file order |
-| GET | `/api/venues/{slug}` | | 200 one venue |
-| GET | `/api/artists` | | 200 list, sorted by slug |
-| GET | `/api/artists/{slug}` | | 200 artist + performances |
-| GET | `/api/programme` | `day` (date), `venue` (slug) | 200 list |
-| GET | `/api/performances/{id}` | | 200 one performance |
-| GET | `/api/now` | `at` (datetime); default now | 200 `{at, now_playing, up_next}` (`up_next` ≤ 3) |
+| Method and path              | Answer                                                                                                         |
+| ---------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `GET /api/festival`          | `{"name", "first_day", "last_day", "days": [...]}`                                                             |
+| `GET /api/venues`            | list of venues, in the order they were added                                                                   |
+| `GET /api/artists`           | list of artists, alphabetical order                                                                            |
+| `GET /api/artists/{slug}`    | an artist, plus `performances`: their performances in order                                                    |
+| `GET /api/programme`         | performances in programme order; filters `?day=2027-06-11`, `?venue=le-kiosque`                                |
+| `GET /api/performances/{id}` | a performance                                                                                                  |
+| `GET /api/now`               | `{"at", "now_playing": [...], "up_next": [...]}` (3 at most); `?at=2027-06-11T21:00` replaces the current time |
 
 ## Write (admin)
 
-| Method | Path | Body | Success |
-| ------ | ---- | ---- | ------- |
-| POST | `/api/performances` | performance in | 201 view |
-| PUT | `/api/performances/{id}` | performance in | 200 view (id may change) |
-| DELETE | `/api/performances/{id}` | | 204 empty |
-| POST | `/api/performances/{id}/participants` | `{name}` | 200 workshop view |
-| POST | `/api/artists` | `{name, bio?, photo_url?}` | 201 artist view |
+| Method and path                            | Body                             | Success                  |
+| ------------------------------------------ | -------------------------------- | ------------------------ |
+| `POST /api/artists`                        | `{"name", "bio"?, "photo_url"?}` | 201, the artist          |
+| `POST /api/performances`                   | a performance (below)            | 201, the performance     |
+| `PUT /api/performances/{id}`               | a performance (below)            | 200, the new performance |
+| `DELETE /api/performances/{id}`            | none                             | 204                      |
+| `POST /api/performances/{id}/participants` | `{"name"}`                       | 201, the workshop        |
 
-Performance in: `{kind, title, venue, start, duration_minutes, description?}` plus the fields of the kind (`artist`/`min_age`, `host`/`acts`, `teacher`/`max_participants`).
+A performance body has the saved fields only (no `id`, `end`, `summary`…):
 
-A refused PUT leaves the schedule unchanged.
+```json
+{
+  "kind": "lineup",
+  "title": "Gala",
+  "venue": "grand-casino",
+  "start": "2027-06-10T20:30",
+  "duration_minutes": 90,
+  "host": "paul-kerbrat",
+  "acts": ["nora-lebrun", "max-pellerin"]
+}
+```
+
+`PUT` can move a performance to another venue or time: its `id` changes, and
+the answer gives the new one. If the new version breaks a rule, nothing
+changes.
+
+Every change is saved to the data file at once.
 
 ## Errors
 
-`{"detail": "a sentence"}`
+Errors of the festival answer `{"detail": "a sentence for the user"}`:
 
-| Situation | Status |
-| --------- | ------ |
-| unknown venue, artist, performance | 404 |
-| venue busy, artist busy, workshop full, name already registered, artist slug already exists | 409 |
-| invalid duration, day, kind rules, missing/invalid body | 422 |
-| `?day=June 11` (not ISO) | 422 (FastAPI) |
-| data file cannot be written | 500 |
+| Status | When                                                                           |
+| ------ | ------------------------------------------------------------------------------ |
+| 404    | unknown artist, venue or performance                                           |
+| 409    | venue or artist busy, date outside the festival, workshop full, already exists |
+| 422    | invalid value: empty name, duration out of range, not a workshop…              |
+| 500    | the data file cannot be read or written                                        |
+
+A body or parameter of the wrong shape (missing field, `"day=June 11"`) is
+refused by FastAPI with a 422 whose `detail` is a list of problems.

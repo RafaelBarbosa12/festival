@@ -235,7 +235,7 @@ def test_register_participant_then_duplicate(client):
         f"/api/performances/{workshop_id}/participants",
         json={"name": "Zoé T."},
     )
-    assert first.status_code == 200
+    assert first.status_code == 201
     assert "Zoé T." in first.json()["participants"]
     second = client.post(
         f"/api/performances/{workshop_id}/participants",
@@ -260,7 +260,7 @@ def test_register_on_a_full_workshop(client):
     )
     assert created.status_code == 201
     path = f"/api/performances/{created.json()['id']}/participants"
-    assert client.post(path, json={"name": "Lou"}).status_code == 200
+    assert client.post(path, json={"name": "Lou"}).status_code == 201
     full = client.post(path, json={"name": "Yanis"})
     assert full.status_code == 409
     assert "full" in full.json()["detail"]

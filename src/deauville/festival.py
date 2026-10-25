@@ -171,14 +171,15 @@ class Festival:
                 f"Duration must be from 1 to 360 minutes, not {new.duration_minutes}."
             )
         if not self.first_day <= new.festival_day <= self.last_day:
-            raise InvalidError(
+            raise ConflictError(
                 f"{new.festival_day.isoformat()} is not a day of the festival."
             )
         for other in self._performances:
             if other.venue.slug == new.venue.slug and new.too_close(other):
                 raise ConflictError(
                     f"{new.venue.name} is busy with {other.title} "
-                    f"({other.start:%Y-%m-%d %H:%M}-{other.end:%H:%M})."
+                    f"({other.start:%Y-%m-%d %H:%M}-{other.end:%H:%M}). "
+                    "Leave 30 minutes between two shows."
                 )
         for person in new.people_on_stage():
             for other in self._performances:

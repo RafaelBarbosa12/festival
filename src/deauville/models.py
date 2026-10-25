@@ -36,6 +36,12 @@ class Venue:
     slug: str = field(init=False)
 
     def __post_init__(self) -> None:
+        self.name = self.name.strip()
+        self.address = self.address.strip()
+        if self.name == "":
+            raise InvalidError("A venue needs a name.")
+        if self.capacity < 1:
+            raise InvalidError("A venue needs at least one seat.")
         self.slug = slugify(self.name)
 
     def to_view(self) -> dict:
@@ -57,6 +63,11 @@ class Artist:
     slug: str = field(init=False)
 
     def __post_init__(self) -> None:
+        self.name = self.name.strip()
+        if self.name == "":
+            raise InvalidError("An artist needs a name.")
+        self.bio = self.bio.strip()
+        self.photo_url = self.photo_url.strip()
         self.slug = slugify(self.name)
 
     def to_view(self) -> dict:
@@ -89,11 +100,13 @@ class Performance(ABC):
         duration_minutes: int,
         description: str = "",
     ) -> None:
-        self.title = title
+        self.title = title.strip()
+        if self.title == "":
+            raise InvalidError("A performance needs a title.")
         self.venue = venue
         self.start = start
         self.duration_minutes = duration_minutes
-        self.description = description
+        self.description = description.strip()
 
     @property
     def end(self) -> datetime:
@@ -127,6 +140,10 @@ class Performance(ABC):
     def kind_row(self) -> dict:
         """Fields that only this kind writes back to the JSON file."""
 
+    def listed_capacity(self) -> int:
+        """Seats of the venue, or workshop places."""
+        return self.venue.capacity
+
     def involves(self, artist: Artist) -> bool:
         return artist in self.people_on_stage()
 
@@ -158,7 +175,7 @@ class Performance(ABC):
             "festival_day": self.festival_day.isoformat(),
             "description": self.description,
             "summary": self.summary(),
-            "capacity": self.venue.capacity,
+            "capacity": self.listed_capacity(),
             "artists": [
                 {"slug": person.slug, "name": person.name}
                 for person in self.people_on_stage()
@@ -333,12 +350,16 @@ class Workshop(Performance):
     def places_left(self) -> int:
         return self.places - len(self._participants)
 
+    def listed_capacity(self) -> int:
+        return self.places
+
     def register(self, name: str) -> None:
         cleaned = name.strip()
         if cleaned == "":
             raise InvalidError("A participant needs a name.")
-        if cleaned in self._participants:
-            raise ConflictError(f"{cleaned} is already registered.")
+        for existing in self._participants:
+            if existing.casefold() == cleaned.casefold():
+                raise ConflictError(f"{cleaned} is already registered.")
         if self.places_left < 1:
             raise ConflictError(f"{self.title} is full.")
         self._participants.append(cleaned)

@@ -1,49 +1,57 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Deauville Festival du Rire</title>
-    <link rel="stylesheet" href="/style.css" />
+    <link rel="stylesheet" href="/style.css?v=official" />
   </head>
   <body>
-    <header class="hero">
-      <p class="eyebrow">10–13 June 2027</p>
-      <h1 id="festival-name">Deauville Festival du Rire</h1>
-      <p id="festival-dates" class="lede"></p>
+    <header class="masthead">
+      <div class="wrap">
+        <p class="eyebrow">First edition</p>
+        <h1>Deauville Festival <span>du Rire</span></h1>
+        <p class="dates" id="dates"></p>
+        <nav class="nav">
+          <a href="#programme">Programme</a>
+          <a href="#artists">Artists</a>
+          <a href="/admin/">Admin</a>
+          <a href="/docs">API</a>
+        </nav>
+      </div>
     </header>
 
-    <nav class="toolbar">
-      <div id="day-tabs" class="tabs"></div>
-      <label class="venue-filter">
-        Venue
-        <select id="venue-select">
-          <option value="">All venues</option>
-        </select>
-      </label>
-    </nav>
-
-    <main>
-      <section id="now-block">
-        <h2>On stage now</h2>
-        <p id="now-when" class="empty"></p>
-        <div id="now-playing" class="cards"></div>
-        <h3>Up next</h3>
-        <div id="up-next" class="cards"></div>
+    <main class="wrap">
+      <section id="now-section">
+        <div class="now" id="now"></div>
       </section>
 
-      <section>
+      <section id="programme">
         <h2>Programme</h2>
-        <p id="programme-empty" class="empty hidden">No shows for this day.</p>
-        <div id="programme" class="cards"></div>
+        <div class="toolbar" id="days"></div>
+        <div class="toolbar">
+          <span class="muted" id="count"></span>
+          <select id="venue-filter" aria-label="Venue">
+            <option value="">All venues</option>
+          </select>
+        </div>
+        <div class="cards" id="cards"></div>
       </section>
 
-      <section>
+      <section id="artists">
         <h2>Artists</h2>
-        <div id="artists" class="artist-grid"></div>
+        <div class="artist-grid" id="artist-grid"></div>
       </section>
     </main>
 
-    <script src="/app.js"></script>
+    <footer class="wrap">
+      A festival day runs until 06:00: late-night shows belong to the evening
+      before.
+    </footer>
+
+    <script src="/app.js?v=official"></script>
+    <script>
+      showHomePage();
+    </script>
   </body>
 </html>

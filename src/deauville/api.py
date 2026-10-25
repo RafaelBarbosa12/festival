@@ -3,8 +3,8 @@
 uv run deauville serve
 """
 
+from collections.abc import Callable
 from datetime import date, datetime
-from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
@@ -18,6 +18,7 @@ from deauville.errors import (
     NotFoundError,
 )
 from deauville.festival import Festival
+from deauville.paths import project_root
 from deauville.storage import JsonStorage, Storage
 
 STATUS = {
@@ -138,7 +139,7 @@ def create_app(storage: Storage) -> FastAPI:
         fest.cancel(performance_id)
         persist(fest)
 
-    @app.post("/api/performances/{performance_id}/participants")
+    @app.post("/api/performances/{performance_id}/participants", status_code=201)
     def register_participant(performance_id: str, body: ParticipantIn) -> dict:
         fest = festival()
         workshop = fest.register(performance_id, body.name)
@@ -152,13 +153,25 @@ def create_app(storage: Storage) -> FastAPI:
         persist(fest)
         return artist.to_view()
 
+    @app.middleware("http")
+    async def no_cache_pages(request: Request, call_next: Callable):
+        response = await call_next(request)
+        if not request.url.path.startswith("/api"):
+            response.headers["Cache-Control"] = "no-store"
+        return response
+
+    root = project_root()
     app.mount(
         "/admin",
-        StaticFiles(directory="web/admin", html=True),
+        StaticFiles(directory=root / "web" / "admin", html=True),
         name="admin",
     )
-    app.mount("/", StaticFiles(directory="web/public", html=True), name="site")
+    app.mount(
+        "/",
+        StaticFiles(directory=root / "web" / "public", html=True),
+        name="site",
+    )
     return app
 
 
-app = create_app(JsonStorage(Path("data/festival.json")))
+app = create_app(JsonStorage(project_root() / "data" / "festival.json"))

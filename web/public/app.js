@@ -1,148 +1,217 @@
-const WEEKDAYS = [
-  "Sunday",
-  "Monday",
-  "Tuesday",
-  "Wednesday",
-  "Thursday",
-  "Friday",
-  "Saturday",
-];
+// Public website of the festival. Every piece of data comes from the API
+// (see API.md). No framework: plain functions that fetch JSON and build HTML.
 
-function formatDay(iso) {
-  const [year, month, day] = iso.split("-").map(Number);
-  const date = new Date(Date.UTC(year, month - 1, day));
-  return `${WEEKDAYS[date.getUTCDay()]} ${day} June`;
-}
-
-function clock(iso) {
-  return iso.slice(11, 16);
-}
-
-async function readJson(path) {
-  const response = await fetch(path);
+async function getJson(url) {
+  const response = await fetch(url);
+  const data = await response.json();
   if (!response.ok) {
-    return null;
+    throw new Error(data.detail || `Error ${response.status}`);
   }
-  return response.json();
+  return data;
+}
+
+function escapeHtml(text) {
+  const div = document.createElement("div");
+  div.textContent = text;
+  return div.innerHTML;
 }
 
 function initials(name) {
-  return name
-    .split(" ")
-    .map((part) => part[0])
-    .join("");
+  const parts = name.split(" ");
+  let result = "";
+  for (const part of parts.slice(0, 2)) {
+    result += part.charAt(0);
+  }
+  return result.toUpperCase();
 }
 
-function badges(show) {
-  const parts = [];
-  if (show.min_age > 0) {
-    parts.push(`<span class="badge">${show.min_age}+</span>`);
+function avatarHtml(artist) {
+  if (artist.photo_url) {
+    return `<img src="${escapeHtml(artist.photo_url)}" alt="" />`;
   }
-  if (show.places_left != null) {
-    parts.push(`<span class="badge">${show.places_left} place(s) left</span>`);
-  }
-  return parts.join(" ");
+  return escapeHtml(initials(artist.name));
 }
 
-function showCard(show) {
-  const article = document.createElement("article");
-  article.className = "show-card";
-  article.innerHTML = `
-    <p class="when">${clock(show.start)}–${clock(show.end)} · ${show.venue_name} ${badges(show)}</p>
-    <h3>${show.title}</h3>
-    <p class="kind">${show.kind}</p>
-    <p>${show.summary}</p>
-  `;
-  return article;
+function formatDay(isoDay) {
+  const day = new Date(isoDay + "T12:00");
+  return day.toLocaleDateString("en-GB", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  });
 }
 
-async function loadProgramme(day, venue) {
-  const params = new URLSearchParams();
-  if (day) {
-    params.set("day", day);
-  }
-  if (venue) {
-    params.set("venue", venue);
-  }
-  const shows = (await readJson(`/api/programme?${params}`)) ?? [];
-  const list = document.getElementById("programme");
-  const empty = document.getElementById("programme-empty");
-  list.replaceChildren();
-  empty.classList.toggle("hidden", shows.length > 0);
-  for (const show of shows) {
-    list.append(showCard(show));
-  }
+function formatTime(isoDateTime) {
+  return isoDateTime.slice(11, 16);
 }
 
-async function main() {
-  const festival = await readJson("/api/festival");
-  const venues = (await readJson("/api/venues")) ?? [];
-  const artists = (await readJson("/api/artists")) ?? [];
-  const tabs = document.getElementById("day-tabs");
-  const select = document.getElementById("venue-select");
-
-  if (festival) {
-    document.getElementById("festival-name").textContent = festival.name;
-    document.getElementById("festival-dates").textContent =
-      `From ${festival.first_day} to ${festival.last_day}`;
+function cardHtml(performance) {
+  const links = [];
+  for (const artist of performance.artists) {
+    links.push(
+      `<a href="/artist.html?slug=${artist.slug}">${escapeHtml(artist.name)}</a>`,
+    );
   }
+  let extra = "";
+  if (performance.kind === "solo" && performance.min_age > 0) {
+    extra += `<span class="badge age">${performance.min_age}+</span>`;
+  }
+  if (performance.kind === "workshop") {
+    extra += `<span class="muted">${performance.places_left} place(s) left</span>`;
+  }
+  const description = performance.description
+    ? `<p class="muted">${escapeHtml(performance.description)}</p>`
+    : "";
+  return `
+    <article class="card ${performance.kind}">
+      <div class="time">
+        ${formatTime(performance.start)}
+        <small>to ${formatTime(performance.end)}</small>
+      </div>
+      <div>
+        <h3>
+          <span class="badge ${performance.kind}">${performance.kind}</span>
+          ${escapeHtml(performance.title)}
+        </h3>
+        <p><strong>${escapeHtml(performance.venue_name)}</strong> ${extra}</p>
+        <p class="artists-links">${links.join(" · ")}</p>
+        ${description}
+      </div>
+    </article>`;
+}
 
-  for (const day of festival?.days ?? []) {
+// --- Home page -------------------------------------------------------------
+
+const state = { day: null, venue: "" };
+
+async function showHomePage() {
+  const festival = await getJson("/api/festival");
+  document.getElementById("dates").textContent =
+    `${formatDay(festival.first_day)} to ${formatDay(festival.last_day)}`;
+
+  const days = document.getElementById("days");
+  for (const day of festival.days) {
     const button = document.createElement("button");
-    button.type = "button";
+    button.className = "tab";
     button.textContent = formatDay(day);
     button.dataset.day = day;
-    if (day === festival.days[0]) {
-      button.classList.add("active");
-    }
-    button.addEventListener("click", () => {
-      for (const other of tabs.querySelectorAll("button")) {
-        other.classList.toggle("active", other === button);
-      }
-      loadProgramme(day, select.value);
-    });
-    tabs.append(button);
+    button.addEventListener("click", () => selectDay(day));
+    days.appendChild(button);
   }
 
+  const venues = await getJson("/api/venues");
+  const filter = document.getElementById("venue-filter");
   for (const venue of venues) {
     const option = document.createElement("option");
     option.value = venue.slug;
-    option.textContent = `${venue.name} · ${venue.capacity} seats`;
-    select.append(option);
+    option.textContent = venue.name;
+    filter.appendChild(option);
   }
-  select.addEventListener("change", () => {
-    const active = tabs.querySelector("button.active");
-    loadProgramme(active?.dataset.day, select.value);
+  filter.addEventListener("change", () => {
+    state.venue = filter.value;
+    showProgramme();
   });
 
-  const grid = document.getElementById("artists");
-  for (const artist of artists) {
-    const card = document.createElement("a");
-    card.className = "artist-card";
-    card.href = `/artist.html?slug=${encodeURIComponent(artist.slug)}`;
-    card.innerHTML = `<strong>${initials(artist.name)} · ${artist.name}</strong><span>${artist.bio}</span>`;
-    grid.append(card);
-  }
-
-  const at = new URLSearchParams(window.location.search).get("at");
-  const nowPath = at ? `/api/now?at=${encodeURIComponent(at)}` : "/api/now";
-  const now = await readJson(nowPath);
-  if (now) {
-    document.getElementById("now-when").textContent = `At ${now.at.replace("T", " ")}`;
-    const playing = document.getElementById("now-playing");
-    for (const show of now.now_playing) {
-      playing.append(showCard(show));
-    }
-    if (now.now_playing.length === 0) {
-      playing.innerHTML = "<p class='empty'>Nothing on stage.</p>";
-    }
-    const next = document.getElementById("up-next");
-    for (const show of now.up_next) {
-      next.append(showCard(show));
-    }
-  }
-
-  await loadProgramme(festival?.days[0], "");
+  selectDay(festival.days[0]);
+  showNow(festival);
+  showArtists();
 }
 
-main();
+function selectDay(day) {
+  state.day = day;
+  for (const button of document.querySelectorAll("#days .tab")) {
+    button.setAttribute("aria-pressed", button.dataset.day === day);
+  }
+  showProgramme();
+}
+
+async function showProgramme() {
+  let url = `/api/programme?day=${state.day}`;
+  if (state.venue) {
+    url += `&venue=${state.venue}`;
+  }
+  const performances = await getJson(url);
+  const cards = [];
+  for (const performance of performances) {
+    cards.push(cardHtml(performance));
+  }
+  document.getElementById("cards").innerHTML =
+    cards.join("") || `<p class="muted">No performance.</p>`;
+  document.getElementById("count").textContent =
+    `${performances.length} performance(s)`;
+}
+
+async function showNow(festival) {
+  // "?at=2027-06-11T21:00" in the address pretends it is that moment.
+  const at = new URLSearchParams(window.location.search).get("at");
+  const url = at ? `/api/now?at=${encodeURIComponent(at)}` : "/api/now";
+  const now = await getJson(url);
+  const box = document.getElementById("now");
+
+  if (now.now_playing.length === 0 && now.up_next.length === 0) {
+    box.innerHTML = `<h2>The festival is over. See you next year!</h2>`;
+    return;
+  }
+
+  let html = "";
+  if (now.now_playing.length > 0) {
+    html += `<h2><span class="live-dot"></span>On stage now</h2><ul>`;
+    for (const performance of now.now_playing) {
+      html += `<li><strong>${escapeHtml(performance.title)}</strong>
+        at ${escapeHtml(performance.venue_name)}, until ${formatTime(performance.end)}</li>`;
+    }
+    html += `</ul>`;
+  } else if (now.at < festival.first_day) {
+    html += `<h2>The festival starts on ${formatDay(festival.first_day)}</h2>
+      <p class="muted">Preview a festival evening:
+      <a href="?at=${festival.days[1]}T21:00">${formatDay(festival.days[1])}, 21:00</a></p>`;
+  }
+  if (now.up_next.length > 0) {
+    html += `<h2>Up next</h2><ul>`;
+    for (const performance of now.up_next) {
+      html += `<li>${formatDay(performance.festival_day)}, ${formatTime(performance.start)}:
+        <strong>${escapeHtml(performance.title)}</strong>
+        at ${escapeHtml(performance.venue_name)}</li>`;
+    }
+    html += `</ul>`;
+  }
+  box.innerHTML = html;
+}
+
+async function showArtists() {
+  const artists = await getJson("/api/artists");
+  const tiles = [];
+  for (const artist of artists) {
+    tiles.push(`
+      <a class="artist-tile" href="/artist.html?slug=${artist.slug}">
+        <span class="avatar">${avatarHtml(artist)}</span>
+        <span>${escapeHtml(artist.name)}</span>
+      </a>`);
+  }
+  document.getElementById("artist-grid").innerHTML = tiles.join("");
+}
+
+// --- Artist page -----------------------------------------------------------
+
+async function showArtistPage() {
+  const slug = new URLSearchParams(window.location.search).get("slug");
+  try {
+    const artist = await getJson(`/api/artists/${slug}`);
+    document.title = `${artist.name} - Deauville Festival du Rire`;
+    document.getElementById("artist-name").textContent = artist.name;
+    document.getElementById("avatar").innerHTML = avatarHtml(artist);
+    document.getElementById("bio").textContent = artist.bio;
+    const cards = [];
+    for (const performance of artist.performances) {
+      cards.push(
+        `<h3 class="muted">${formatDay(performance.festival_day)}</h3>` +
+          cardHtml(performance),
+      );
+    }
+    document.getElementById("cards").innerHTML =
+      cards.join("") || `<p class="muted">No performance yet.</p>`;
+  } catch (error) {
+    document.getElementById("artist-name").textContent = "Artist not found";
+    document.getElementById("bio").textContent = error.message;
+  }
+}

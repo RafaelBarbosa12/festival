@@ -85,7 +85,7 @@ def test_day_outside_the_festival(festival):
         "2027-06-14T08:00",
         30,
     )
-    with pytest.raises(InvalidError, match="2027-06-14 is not a day"):
+    with pytest.raises(ConflictError, match="2027-06-14 is not a day"):
         festival.add(new)
 
 
@@ -231,6 +231,8 @@ def test_workshop_register_refuses_duplicates_and_a_full_room(festival):
     workshop = festival.require_performance("la-cabane-2027-06-11-1030")
     with pytest.raises(ConflictError, match="already registered"):
         workshop.register("Camille R.")
+    with pytest.raises(ConflictError, match="already registered"):
+        workshop.register("camille r.")
     tiny = Workshop(
         "Tiny",
         festival.venue_by_slug("la-cabane"),

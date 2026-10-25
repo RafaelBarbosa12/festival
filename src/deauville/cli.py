@@ -12,6 +12,7 @@ import uvicorn
 from deauville.api import create_app
 from deauville.errors import FestivalError, InvalidError
 from deauville.festival import Festival
+from deauville.paths import project_root
 from deauville.storage import JsonStorage, Storage
 
 WEEKDAYS_LONG = (
@@ -149,7 +150,10 @@ def print_usage() -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(prog="deauville", add_help=True)
-    parser.add_argument("--data", default="data/festival.json")
+    parser.add_argument(
+        "--data",
+        default=str(project_root() / "data" / "festival.json"),
+    )
     parser.add_argument("--port", type=int, default=8000)
     parser.add_argument("command", nargs="?", default="")
     parser.add_argument("values", nargs="*")
